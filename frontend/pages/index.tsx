@@ -4,6 +4,7 @@ import PlanCard from "../components/PlanCard";
 import Menu from "../components/Menu";
 import Footer from "../components/Footer";
 import styles from "../styles/Home.module.scss";
+import Modal from "../components/Modal";
 
 interface Plan {
   id: number;
@@ -37,6 +38,21 @@ const CITIES = [
   "Brasília",
 ];
 
+const SORTED = {
+  Preço: "price",
+  Franquia: "dataCap",
+  Velocidade: "speed",
+};
+
+const ORDERS = {
+  "Menor Preço": "min",
+  "Maior Preço": "max",
+  "Menor Franquia": "min",
+  "Maior Franquia": "max",
+  "Menor Velocidade": "min",
+  "Maior Velocidade": "max",
+};
+
 export default function Home() {
   const [filters, setFilters] = useState<PlanSearchParams>({
     page: 1,
@@ -45,6 +61,9 @@ export default function Home() {
   const [result, setResult] = useState<PaginatedPlans | null>(null);
   const [loading, setLoading] = useState(false);
   const [planNames, setPlanNames] = useState<string[]>([]);
+  const [planCities, setPlanCities] = useState<string[]>([]);
+  const [planOperators, setPlanOperators] = useState<string[]>([]);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -59,14 +78,22 @@ export default function Home() {
       .get("/plans/search", { params: { page: 1, pageSize: 1000 } })
       .then((res) => {
         const names = res.data.plans.map((p: any) => p.name);
+        const namesOperators = res.data.plans.map((p: any)=> p.operator);
+        const nameCities = res.data.plans.map((p: any)=> p.city);
         setPlanNames(Array.from(new Set(names)));
+        setPlanOperators(Array.from(new Set(namesOperators)));
+        setPlanCities(Array.from(new Set(nameCities)));
       });
   }, []);
+
+
+
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) {
     const { name, value } = e.target;
+
     setFilters((prev) => ({
       ...prev,
       [name]: value ? value : undefined,
@@ -106,6 +133,64 @@ export default function Home() {
             }}
           >
             Filtrar planos
+            <button
+              onClick={() => setShowModal(true)}
+              aria-label="Abrir Modal"
+              title="Abrir Modal"
+              style={{
+                background: "linear-gradient(90deg, #00b38f 60%, #00997a 100%)",
+                color: "#fff",
+                border: "none",
+                borderRadius: 9999,
+                width: 56,
+                height: 56,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                boxShadow: "0 2px 8px #00b38f22",
+                transition: "filter 0.2s, transform 0.1s",
+                position: "relative",
+                float: "right"
+              }}
+              onMouseDown={(e) =>
+                (e.currentTarget.style.transform = "scale(0.98)")
+              }
+              onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.transform = "scale(1)")
+              }
+              
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: -2,
+                  borderRadius: "inherit",
+                  border: "2px solid rgba(255,255,255,0.55)",
+                  animation: "ringPulse 1.6s ease-out infinite",
+                  pointerEvents: "none",
+                }}
+              />
+              <span
+                aria-hidden="true"
+                style={{
+                  fontSize: 22,
+                  lineHeight: 1,
+                  animation: "iconPulse 1.6s ease-in-out infinite",
+                }}
+              >
+                ✨
+              </span>
+            </button>
+            <Modal
+              open={showModal}
+              onClose={() => setShowModal(false)}
+              onSubmit={(values) => console.log(values)}
+              cities={planCities}
+              operators={planOperators}
+            />
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <label style={{ color: "#00897b", fontWeight: 600, fontSize: 15 }}>
@@ -312,6 +397,54 @@ export default function Home() {
                 </svg>
               </button>
             </div>
+            <label style={{ color: "#00897b", fontWeight: 600, fontSize: 15 }}>
+              Classificar por:
+            </label>
+            <select
+              name="sorted"
+              onChange={handleChange}
+              defaultValue=""
+              style={{
+                padding: 10,
+                borderRadius: 8,
+                border: "1.5px solid #b2dfdb",
+                background: "#fff",
+                fontSize: 15,
+              }}
+            >
+              <option value="">Selecione</option>
+              {Object.entries(SORTED).map(([key, value]) => {
+                return (
+                  <option key={key} value={value}>
+                    {key}
+                  </option>
+                );
+              })}
+            </select>
+            <label style={{ color: "#00897b", fontWeight: 600, fontSize: 15 }}>
+              Ordernar por:
+            </label>
+            <select
+              name="order"
+              onChange={handleChange}
+              defaultValue=""
+              style={{
+                padding: 10,
+                borderRadius: 8,
+                border: "1.5px solid #b2dfdb",
+                background: "#fff",
+                fontSize: 15,
+              }}
+            >
+              <option value="">Selecione</option>
+              {Object.entries(ORDERS).map(([key, value]) => {
+                return (
+                  <option key={key} value={value}>
+                    {key}
+                  </option>
+                );
+              })}
+            </select>
           </div>
         </aside>
         {/* Conteúdo principal */}

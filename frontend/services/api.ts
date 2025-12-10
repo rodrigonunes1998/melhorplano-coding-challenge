@@ -18,7 +18,19 @@ export interface PlanSearchParams {
   pageSize?: number;
 }
 
+export type RecomendedPlanParams = {
+  city? : string;
+  maxPrice? : number;
+  typeUse?: string;
+
+}
+
 export async function fetchFilteredPlans(params: PlanSearchParams) {
   const { data } = await api.get("/plans/search", { params });
+  return data;
+}
+
+export async function fetchRecomendedPlan(params: RecomendedPlanParams ){
+  const {data} = await api.get("/plans/recomended", {params});
   return data;
 }

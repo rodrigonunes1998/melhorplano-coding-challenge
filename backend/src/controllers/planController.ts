@@ -1,42 +1,44 @@
 import { Request, Response } from "express";
 import {
-  getPlans,
-  handleThing,
+  filtersPlansBySpeedAndPrice,
   searchPlans,
   PlanSearchFilters,
+  getAllPlansOnlyWithPrice,
+  recommendPlans,
+  RecommendationFilters,
 } from "../services/planService";
-import { Plan } from "../models/plan";
 
-export function allPlans(req: Request, res: Response) {
-  const plans = getPlans()
-    .map((plan: Plan) => {
-      if (plan.price) {
-        return { ...plan, name: plan.name.toUpperCase() };
-      }
-      return null;
-    })
-    .reduce((acc: Plan[], plan) => {
-      if (plan && !plan.price) {
-        acc.push(plan);
-      }
-      return acc;
-    }, []);
-  res.json(plans);
+import { schemaPage } from "./schemas/schemaPage";
+
+export async function allPlans(req: Request, res: Response) {
+
+  try {
+    const getAllPlans = await getAllPlansOnlyWithPrice();
+    res.json(getAllPlans);
+  } catch (error: any) {
+    res.status(400).json({error: true, message: error.message});
+  }
+  
 }
 
-export function filteredPlans(req: Request, res: Response) {
-  const minSpeed = req.query.minSpeed
+export async function filteredPlans(req: Request, res: Response) {
+  const minSpeedMbps = req.query.minSpeed
     ? parseInt(req.query.minSpeed as string)
     : undefined;
   const maxPrice = req.query.maxPrice
     ? parseFloat(req.query.maxPrice as string)
     : undefined;
-  const plans = getPlans();
-  const filtered = handleThing(plans, minSpeed, maxPrice);
-  res.json(filtered);
+
+    try {
+      const filtered = await filtersPlansBySpeedAndPrice({ minSpeedMbps, maxPrice });
+      res.json(filtered);
+    } catch (error: any) {
+      res.status(400).json({error: true, message: error.message});
+    }
+  
 }
 
-export function planSearch(req: Request, res: Response) {
+export async function planSearch(req: Request, res: Response) {
   const {
     minPrice,
     maxPrice,
@@ -47,7 +49,19 @@ export function planSearch(req: Request, res: Response) {
     name,
     page = "1",
     pageSize = "5",
+    sorted,
+    order,
   } = req.query;
+
+  const validationPagesInfo = schemaPage.safeParse({ page, pageSize });
+
+  if (!validationPagesInfo.success)
+    return res
+      .status(400)
+      .json({
+        error: true,
+        message: "Attrbutes of page and pageSize has error",
+      });
 
   const filters: PlanSearchFilters = {
     minPrice: minPrice ? Number(minPrice) : undefined,
@@ -57,9 +71,34 @@ export function planSearch(req: Request, res: Response) {
     operator: operator ? String(operator) : undefined,
     city: city ? String(city) : undefined,
     name: name ? String(name) : undefined,
+    sorted: sorted ? String(sorted) : undefined,
+    order: order ? String(order) : undefined,
   };
 
-  const paginated = searchPlans(filters, Number(page), Number(pageSize));
+  try {
+    const paginated = await searchPlans(filters, Number(page), Number(pageSize));
+    res.json(paginated);    
+  } catch (error: any) {
+    res.status(400).json({error: true, message: error.message})
+  }
 
-  res.json(paginated);
+}
+
+
+export async function planRecomended(req: Request, res: Response){
+  const { city, maxPrice, typeUse, operator } = req.query;
+
+  const filters: RecommendationFilters = {
+    city: city ? String(city) : undefined,
+    maxPrice: maxPrice ? Number(maxPrice) : undefined,
+    typeUse: typeUse ? String(typeUse) : undefined,
+    operator: operator ? String(operator) : undefined,
+  };
+
+  try {
+    const plans = await recommendPlans(filters);
+    res.json({ plans, total: plans.length });
+  } catch (error: any) {
+    res.status(400).json({ error: true, message: error.message });
+  }
 }
